@@ -103,68 +103,80 @@ angular.module('scanner.controllers', ['ionic'])
       }
     };
 
-    vm.scan = function(){
-      if($scope.eventName.eventCode.length>0){
-        $ionicPlatform.ready(function() {
-          cloudSky.zBar.scan({
-            camera: "back" // defaults to "back"
-          }, function(result) {
-            // Success! Barcode data is here
-            if(result.length==9 && (result.indexOf('U')==0 || result.indexOf('u')==0) && $scope.isScan == true ){
-              $http.get("http://172.21.147.177:8000/register/"+eventName.eventCode+"/"+result)
-                .then(function(resp) {
+    vm.successFunc = function(result) {
+      // Success! Barcode data is here
+      if(result.length==9 && (result.indexOf('U')==0 || result.indexOf('u')==0) && $scope.isScan == true ){
+        $http.get("http://172.21.147.177:8000/register/"+eventName.eventCode+"/"+result)
+          .then(function(resp) {
 
-                  if (resp.data.indexOf('New')>=0) {
-                    vm.scanResults = "Added "+result+" successfully! Please Proceed!";
-                    vm.succeedClass = "Green";
+            if (resp.data.indexOf('New')>=0) {
+              vm.scanResults = "Added "+result+" successfully! Please Proceed!";
+              vm.succeedClass = "Green";
 
-                    if(result && ionic.Platform.isAndroid()) {
-                      $scope.timer = $timeout(function () {
-                        vm.scan();
-                      }, 300);
-                    }
-
-                  }
-                  else if(resp.data.indexOf('already')>=0){
-                    vm.scanResults = "Sorry "+result+" Registered";
-                    vm.succeedClass = "Red";
-                  }
-                  else{
-                    vm.scanResults = "Result text '" +resp.data+"'";
-                  }
-                }, function(err) {
-                  if($scope.timer) {
-                    $timeout.cancel($scope.timer);
-                    $scope.timer = null;
-                  }
-                  console.error('ERR', err);
-                  // err.status will contain the status code
-                  vm.succeedClass = "Orange";
-                  vm.scanResults = err;
-                });
-
-            }
-            else {
-              if($scope.timer) {
-                $timeout.cancel($scope.timer);
-                $scope.timer = null;
+              if(result && ionic.Platform.isAndroid()) {
+                $scope.timer = $timeout(function () {
+                  vm.scan();
+                }, 300);
               }
-              vm.scanResults = "Invalid Matric Number: " + result;
-              vm.succeedClass = "Orange";
-            }
 
-          }, function(error) {
+            }
+            else if(resp.data.indexOf('already')>=0){
+              vm.scanResults = "Sorry "+result+" Registered";
+              vm.succeedClass = "Red";
+            }
+            else{
+              vm.scanResults = "Result text '" +resp.data+"'";
+            }
+          }, function(err) {
             if($scope.timer) {
               $timeout.cancel($scope.timer);
               $scope.timer = null;
             }
-            // An error occurred
-            vm.scanResults = 'Error: ' + error;
+            console.error('ERR', err);
+            // err.status will contain the status code
             vm.succeedClass = "Orange";
+            vm.scanResults = err;
           });
-          //$cordovaBarcodeScanner
-          //    .scan()
-          //    .then();
+
+      }
+      else {
+        if($scope.timer) {
+          $timeout.cancel($scope.timer);
+          $scope.timer = null;
+        }
+        vm.scanResults = "Invalid Matric Number: " + result;
+        vm.succeedClass = "Orange";
+      }
+
+    };
+
+    vm.failureFunc = function(error) {
+      if($scope.timer) {
+        $timeout.cancel($scope.timer);
+        $scope.timer = null;
+      }
+      // An error occurred
+      vm.scanResults = 'Error: ' + error;
+      vm.succeedClass = "Orange";
+    };
+
+    vm.scan = function(){
+      if($scope.eventName.eventCode.length>0){
+        $ionicPlatform.ready(function() {
+          if(ionic.Platform.isAndroid()){
+            $cordovaBarcodeScanner
+                .scan()
+                .then(function(result){
+                //success
+                vm.successFunc(result.text);
+              }, function(err){
+                vm.failureFunc(err);
+              });
+          } else {
+            cloudSky.zBar.scan({
+              camera: "back" // defaults to "back"
+            }, vm.successFunc, vm.failureFunc);
+          }
         });
       }
       else{
