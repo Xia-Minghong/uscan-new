@@ -175,7 +175,11 @@ angular.module('scanner.controllers', ['ionic'])
           } else {
             cloudSky.zBar.scan({
               camera: "back" // defaults to "back"
-            }, vm.successFunc, vm.failureFunc);
+            }, function(result) {
+              vm.successFunc(result);
+            }, function(err) {
+              vm.failureFunc(err);
+            });
           }
         });
       }
